@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tona.style.fontFamily = "sans-serif";
 
         let texto = document.createElement('h1');
-        texto.innerText = "GAME OVER";
+        texto.innerText = "Você foi devorado ✌️😔, aperte 'espaço' para atacar";
         texto.style.color = "red";
         texto.style.fontSize = "48px";
         texto.style.margin = "0 0 10px 0";
