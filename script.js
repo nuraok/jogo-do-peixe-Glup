@@ -1,12 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    document.body.style.margin = "0";
-    document.body.style.padding = "0";
-    document.body.style.overflow = "hidden";
-    document.body.style.width = "100vw";
-    document.body.style.height = "100vh";
-    document.body.style.position = "relative";
-
-
     let i = 1;
     let juegoAtivo = true;
     let jogoPausado = false;
