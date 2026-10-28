@@ -454,7 +454,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let y = Math.random() * (window.innerHeight - obj.h);
 
         let box = document.createElement('img');
-        box.src = "../light.png";
+        box.src = "light.png";
+        box.alt = "Peixe";
 
         presets(box, y);
         document.body.appendChild(box);
