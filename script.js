@@ -5,75 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.style.width = "100vw";
     document.body.style.height = "100vh";
     document.body.style.position = "relative";
-    document.body.style.background = "linear-gradient(to bottom, #2a8fd6, #0a2a4a)";
 
-    // cenário simples de oceano (fica atrás dos elementos do jogo)
-    (function criarCenario() {
-        function decor(css) {
-            let d = document.createElement('div');
-            d.style.position = "absolute";
-            d.style.pointerEvents = "none";
-            d.style.zIndex = "0";
-            Object.assign(d.style, css);
-            document.body.appendChild(d);
-            return d;
-        }
-
-        // linhas de ondas perto da superfície
-        for (let n = 0; n < 4; n++) {
-            decor({
-                top: `${4 + n * 5}vh`,
-                left: `${Math.random() * 70}vw`,
-                width: `${10 + Math.random() * 15}vw`,
-                height: "3px",
-                borderRadius: "3px",
-                backgroundColor: "rgba(255,255,255,0.25)"
-            });
-        }
-
-        // chão de areia
-        decor({
-            bottom: "0",
-            left: "0",
-            width: "100vw",
-            height: "7vh",
-            backgroundColor: "#c9ae78"
-        });
-
-        // algumas pedras
-        for (let n = 0; n < 5; n++) {
-            let largura = 40 + Math.random() * 50;
-            decor({
-                bottom: "6vh",
-                left: `${5 + Math.random() * 90}vw`,
-                width: `${largura}px`,
-                height: `${largura * 0.5}px`,
-                borderRadius: "50% 50% 0 0",
-                backgroundColor: "#5f6b73"
-            });
-        }
-
-        // bolhas subindo
-        for (let n = 0; n < 10; n++) {
-            let tamanho = 6 + Math.random() * 8;
-            let bolha = decor({
-                bottom: "0",
-                left: `${Math.random() * 98}vw`,
-                width: `${tamanho}px`,
-                height: `${tamanho}px`,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.6)"
-            });
-            let duracao = 6000 + Math.random() * 6000;
-            bolha.animate(
-                [
-                    { transform: "translateY(0)", opacity: 0.7 },
-                    { transform: `translateY(-${window.innerHeight}px)`, opacity: 0 }
-                ],
-                { duration: duracao, iterations: Infinity, delay: -Math.random() * duracao }
-            );
-        }
-    })();
 
     let i = 1;
     let juegoAtivo = true;
