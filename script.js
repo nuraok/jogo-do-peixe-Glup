@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function spawnVerde() {
         if (!juegoAtivo) return;
 
-        let tempoEspera = Math.floor(Math.random() * 6000) + 8000; // 8 a 14s
+        let tempoEspera = Math.floor(Math.random() * 30000) + 10000; // 8 a 14s
         await delay(tempoEspera);
 
         if (!juegoAtivo) return;
