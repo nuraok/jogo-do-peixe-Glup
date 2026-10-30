@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     let i = 1;
-    let juegoAtivo = false;          // só vira true depois de escolher o modo no menu
+    let juegoAtivo = false;
     let emMenu = true;
     let multiplayer = false;
     let jogoPausado = false;
@@ -12,31 +12,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let lentidoesNaTela = [];
     let verdesNaTela = [];
 
-    // quanto cada bolinha de lentidão reduz do bônus de velocidade
-    const REDUCAO_POR_BOLINHA =6;
-    // quanto de bônus já foi "descontado" pelas bolinhas
+    const REDUCAO_POR_BOLINHA = 6;
     let reducaoBonus = 0;
 
-    // bolinha verde: encolhe, gira e pisca as focas
-    const REDUCAO_POR_VERDE = 10;      // menor que a laranja (1.5)
-    const DURACAO_ENCOLHER = 10000;     // 10 segundos
-    const ESCALA_ENCOLHIDA = 0.5;       // metade do tamanho
+    const REDUCAO_POR_VERDE = 10;
+    const DURACAO_ENCOLHER = 10000;
+    const ESCALA_ENCOLHIDA = 0.5;
     let encolhendo = false;
     let tempoEncolher = 0;
     let anguloFoca = 0;
 
-    // multiplayer: tempo que o jogador morto espera para voltar
-    const TEMPO_REVIVER = 10000;        // 10 segundos
+    const TEMPO_REVIVER = 10000;
 
-    // vara de pesca
-    const RECARGA_VARA = 3000;      // ms entre um tiro e outro
-    const VELOCIDADE_ANZOL = 20;    // pixels por frame
-    let proximoTiro = 0;
-    let anzol = null;
-    const ALCANCE_VARA = 500;       // distância máxima do ataque (px)
-    const HITBOX_W = 100;           // largura da área de acerto
-    const HITBOX_H = 140;           // altura da área de acerto
-    let direcaoVara = -1;           // -1 = esquerda (de onde vêm as caixas), 1 = direita
+    // Vara de pesca
+    const RECARGA_VARA = 3000;
+    const VELOCIDADE_ANZOL = 20;
+    const ALCANCE_VARA = 500;
+    const HITBOX_W = 100;
+    const HITBOX_H = 140;
+    let direcaoVara = -1;
 
     let obj = { w: 140, h: 100 };
 
@@ -51,10 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         comEscudo: false,
         tempoEscudo: 0,
         morto: false,
-        tempoVolta: 0
+        tempoVolta: 0,
+        proximoTiro: 0,
+        anzol: null
     };
 
-    // jogador 2 (só existe no multiplayer): quadrado azul, move com as setinhas
     let player2 = {
         element: document.createElement('div'),
         x: window.innerWidth / 2 + 60,
@@ -66,7 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         comEscudo: false,
         tempoEscudo: 0,
         morto: false,
-        tempoVolta: 0
+        tempoVolta: 0,
+        proximoTiro: 0,
+        anzol: null
     };
 
     let jogadores = [playerObj];
@@ -83,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     placar.innerText = "Tempo: 0s";
     document.body.appendChild(placar);
 
-    // barra de recarga do anzol (ao lado do tempo)
+    // Barra de recarga do arpão
     let barraVara = document.createElement('div');
     barraVara.style.position = "absolute";
     barraVara.style.top = "28px";
@@ -142,18 +139,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let teclas = {
         w: false, a: false, s: false, d: false,
-        arrowup: false, arrowdown: false, arrowleft: false, arrowright: false
+        arrowup: false, arrowdown: false,
+        arrowleft: false, arrowright: false
     };
+
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
-        if (key.startsWith("arrow")) e.preventDefault(); // setinhas não rolam a página
+
+        if (key.startsWith("arrow")) e.preventDefault();
+
         if (key in teclas) teclas[key] = true;
+
         if (key === "a") direcaoVara = -1;
         if (key === "d") direcaoVara = -1;
 
+        // Jogador vermelho: ESPAÇO
         if (e.key === " ") {
             e.preventDefault();
-            atirar();
+            atirar(playerObj);
+        }
+
+        // Jogador azul: ENTER
+        if (e.key === "Enter" && juegoAtivo && multiplayer) {
+            e.preventDefault();
+            atirar(player2);
         }
 
         if (e.key === "Escape") {
@@ -162,26 +171,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Reiniciar depois do game over
         if (e.key === "Enter") {
             if (!juegoAtivo && !emMenu) {
                 location.reload();
             }
         }
     });
+
     window.addEventListener('keyup', (e) => {
         let key = e.key.toLowerCase();
+
         if (key in teclas) teclas[key] = false;
     });
 
-    function atirar() {
-        if (!juegoAtivo || jogoPausado || anzol) return;
-        if (playerObj.morto) return;
-        if (Date.now() < proximoTiro) return;
+    // Cada jogador possui seu próprio arpão e recarga
+    function atirar(p = playerObj) {
+        if (!juegoAtivo || jogoPausado || p.anzol) return;
+        if (p.morto) return;
+        if (Date.now() < p.proximoTiro) return;
 
-        proximoTiro = Date.now() + RECARGA_VARA;
+        p.proximoTiro = Date.now() + RECARGA_VARA;
 
-        let cx = playerObj.x + playerObj.w / 2;
-        let cy = playerObj.y + playerObj.h / 2;
+        let cx = p.x + p.w / 2;
+        let cy = p.y + p.h / 2;
 
         let elAnzol = document.createElement('div');
         elAnzol.style.position = "absolute";
@@ -202,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elLinha.style.zIndex = "4";
         elLinha.style.pointerEvents = "none";
 
-        // área de acerto visível (translúcida)
         let elArea = document.createElement('div');
         elArea.style.position = "absolute";
         elArea.style.width = `${HITBOX_W}px`;
@@ -217,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(elLinha);
         document.body.appendChild(elAnzol);
 
-        anzol = {
+        p.anzol = {
             x: cx,
             y: cy,
             vx: direcaoVara * VELOCIDADE_ANZOL,
@@ -228,24 +240,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function removerAnzol() {
-        if (!anzol) return;
-        anzol.element.remove();
-        anzol.linha.remove();
-        anzol.area.remove();
-        anzol = null;
+    function removerAnzol(p) {
+        if (!p.anzol) return;
+
+        p.anzol.element.remove();
+        p.anzol.linha.remove();
+        p.anzol.area.remove();
+
+        p.anzol = null;
     }
 
-    function atualizarAnzol() {
+    function atualizarAnzol(p) {
+        let anzol = p.anzol;
         if (!anzol) return;
 
         anzol.x += anzol.vx;
         anzol.percorrido += Math.abs(anzol.vx);
 
-        let cx = playerObj.x + playerObj.w / 2;
-        let cy = playerObj.y + playerObj.h / 2;
+        let cx = p.x + p.w / 2;
+        let cy = p.y + p.h / 2;
 
-        // área de acerto grande centrada no anzol: destrói TODAS as caixas dentro dela
         let aL = anzol.x - HITBOX_W / 2;
         let aR = anzol.x + HITBOX_W / 2;
         let aT = cy - HITBOX_H / 2;
@@ -254,23 +268,28 @@ document.addEventListener('DOMContentLoaded', () => {
         caixas = caixas.filter(box => {
             let bx = parseFloat(box.style.left) || 0;
             let by = parseFloat(box.style.top) || 0;
+
             let acertou = (
                 bx < aR && bx + obj.w > aL &&
                 by < aB && by + obj.h > aT
             );
+
             if (acertou) box.remove();
+
             return !acertou;
         });
 
-        // chegou no alcance máximo (ou saiu da tela)
-        if (anzol.percorrido >= ALCANCE_VARA ||
-            anzol.x < -20 || anzol.x > window.innerWidth + 20) {
-            removerAnzol();
+        if (
+            anzol.percorrido >= ALCANCE_VARA ||
+            anzol.x < -20 ||
+            anzol.x > window.innerWidth + 20
+        ) {
+            removerAnzol(p);
             return;
         }
 
-        // desenha anzol, linha e área
         let comprimento = Math.abs(anzol.x - cx);
+
         anzol.element.style.left = `${anzol.x - 5}px`;
         anzol.element.style.top = `${cy - 5}px`;
         anzol.linha.style.left = `${Math.min(cx, anzol.x)}px`;
@@ -282,10 +301,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function atualizarPlacarVara() {
-        let restante = proximoTiro - Date.now();
+        let restante = playerObj.proximoTiro - Date.now();
+
         if (restante > 0) {
             let progresso = 1 - restante / RECARGA_VARA;
-            preenchimentoVara.style.width = `${Math.max(0, progresso) * 100}%`;
+            preenchimentoVara.style.width =
+                `${Math.max(0, progresso) * 100}%`;
             preenchimentoVara.style.backgroundColor = "white";
         } else {
             preenchimentoVara.style.width = "100%";
@@ -300,18 +321,22 @@ document.addEventListener('DOMContentLoaded', () => {
             telaPausa.style.display = "flex";
         } else {
             let duracaoPausa = Date.now() - inicioPausa;
+
             jogoPausado = false;
             tempoPausadoTotal += duracaoPausa;
+
             jogadores.forEach(p => {
-                // o escudo não deve gastar tempo enquanto o jogo está pausado
                 if (p.comEscudo) p.tempoEscudo += duracaoPausa;
-                // a espera para voltar também não conta durante a pausa
                 if (p.morto) p.tempoVolta += duracaoPausa;
             });
-            // o evento da bolinha verde também não gasta tempo durante a pausa
+
             if (encolhendo) tempoEncolher += duracaoPausa;
-            // a recarga da vara também não conta durante a pausa
-            proximoTiro += duracaoPausa;
+
+            // A recarga de cada jogador pausa individualmente
+            jogadores.forEach(p => {
+                if (p.proximoTiro) p.proximoTiro += duracaoPausa;
+            });
+
             telaPausa.style.display = "none";
             requestAnimationFrame(anima);
         }
@@ -332,8 +357,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!juegoAtivo || jogoPausado) return;
 
         moverUm(playerObj, teclas.w, teclas.s, teclas.a, teclas.d);
+
         if (multiplayer) {
-            moverUm(player2, teclas.arrowup, teclas.arrowdown, teclas.arrowleft, teclas.arrowright);
+            moverUm(
+                player2,
+                teclas.arrowup,
+                teclas.arrowdown,
+                teclas.arrowleft,
+                teclas.arrowright
+            );
         }
     }
 
@@ -351,24 +383,30 @@ document.addEventListener('DOMContentLoaded', () => {
         item.style.left = `-${obj.w}px`;
     }
 
-    // bônus de velocidade que cresce com o tempo (não é afetado pelas bolinhas)
     function calcularBonusBruto() {
-        let tempoDecorridoEfetivo = Date.now() - tempoInicial - tempoPausadoTotal;
+        let tempoDecorridoEfetivo =
+            Date.now() - tempoInicial - tempoPausadoTotal;
+
         let segundosPassados = Math.floor(tempoDecorridoEfetivo / 200);
+
         return segundosPassados * 0.1;
     }
 
     function ativarLentidao() {
-        // nunca reduz além do bônus atual, para a bolinha não ser desperdiçada
-        reducaoBonus = Math.min(reducaoBonus + REDUCAO_POR_BOLINHA, calcularBonusBruto());
+        reducaoBonus = Math.min(
+            reducaoBonus + REDUCAO_POR_BOLINHA,
+            calcularBonusBruto()
+        );
     }
 
-    // ---------- bolinha verde ----------
     function ativarEncolher() {
         encolhendo = true;
         tempoEncolher = Date.now() + DURACAO_ENCOLHER;
-        // mesma lógica da laranja, mas reduz menos (não mexe no placar de tempo)
-        reducaoBonus = Math.min(reducaoBonus + REDUCAO_POR_VERDE, calcularBonusBruto());
+
+        reducaoBonus = Math.min(
+            reducaoBonus + REDUCAO_POR_VERDE,
+            calcularBonusBruto()
+        );
     }
 
     function resetarEstiloFoca(box) {
@@ -386,11 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function aplicarEfeitoFocas() {
         if (!encolhendo) return;
+
         anguloFoca = (anguloFoca + 10) % 360;
+
         caixas.forEach(box => {
             box.style.scale = `${ESCALA_ENCOLHIDA}`;
             box.style.rotate = `${anguloFoca}deg`;
-            // sepia + hue-rotate faz até imagens cinza virarem arco-íris
+
             box.style.filter =
                 `sepia(1) saturate(6) hue-rotate(${anguloFoca * 3}deg) ` +
                 `drop-shadow(0 0 6px hsl(${anguloFoca * 3}, 100%, 50%))`;
@@ -400,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function spawnVerde() {
         if (!juegoAtivo) return;
 
-        let tempoEspera = Math.floor(Math.random() * 30000) + 10000; // 8 a 14s
+        let tempoEspera = Math.floor(Math.random() * 30000) + 10000;
         await delay(tempoEspera);
 
         if (!juegoAtivo) return;
@@ -422,11 +462,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let angulo = Math.random() * Math.PI * 2;
         let raio = Math.random() * 700 + 300;
 
-        let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
-        let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+        let targetX =
+            playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
 
-        targetX = Math.max(0, Math.min(window.innerWidth - tamanhoBolinha, targetX));
-        targetY = Math.max(0, Math.min(window.innerHeight - tamanhoBolinha, targetY));
+        let targetY =
+            playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+
+        targetX = Math.max(
+            0,
+            Math.min(window.innerWidth - tamanhoBolinha, targetX)
+        );
+
+        targetY = Math.max(
+            0,
+            Math.min(window.innerHeight - tamanhoBolinha, targetY)
+        );
 
         bola.style.left = `${targetX}px`;
         bola.style.top = `${targetY}px`;
@@ -436,7 +486,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         spawnVerde();
     }
-    // -----------------------------------
 
     async function spawnLentidao() {
         if (!juegoAtivo) return;
@@ -463,11 +512,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let angulo = Math.random() * Math.PI * 2;
         let raio = Math.random() * 550 + 300;
 
-        let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
-        let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+        let targetX =
+            playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
 
-        targetX = Math.max(0, Math.min(window.innerWidth - tamanhoBolinha, targetX));
-        targetY = Math.max(0, Math.min(window.innerHeight - tamanhoBolinha, targetY));
+        let targetY =
+            playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+
+        targetX = Math.max(
+            0,
+            Math.min(window.innerWidth - tamanhoBolinha, targetX)
+        );
+
+        targetY = Math.max(
+            0,
+            Math.min(window.innerHeight - tamanhoBolinha, targetY)
+        );
 
         bola.style.left = `${targetX}px`;
         bola.style.top = `${targetY}px`;
@@ -480,18 +539,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function move(item) {
         if (!item.velocidade) {
-            let bonusVelocidade = Math.max(0, calcularBonusBruto() - reducaoBonus);
-            item.velocidade = Math.ceil(Math.random() * 10 + 5) + bonusVelocidade;
+            let bonusVelocidade =
+                Math.max(0, calcularBonusBruto() - reducaoBonus);
+
+            item.velocidade =
+                Math.ceil(Math.random() * 10 + 5) + bonusVelocidade;
         }
 
         let atualX = parseFloat(item.style.left) || 0;
         let novoX = atualX + item.velocidade;
+
         item.style.left = `${novoX}px`;
 
         if (novoX > window.innerWidth + obj.w) {
             item.remove();
             return true;
         }
+
         return false;
     }
 
@@ -504,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let y = Math.random() * (window.innerHeight+30)-30;
+        let y = Math.random() * (window.innerHeight + 30) - 30;
 
         let box = document.createElement('img');
         box.src = "sea.png";
@@ -544,11 +608,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let angulo = Math.random() * Math.PI * 2;
         let raio = Math.random() * 500 + 50;
 
-        let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
-        let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+        let targetX =
+            playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
 
-        targetX = Math.max(0, Math.min(window.innerWidth - tamanhoBolinha, targetX));
-        targetY = Math.max(0, Math.min(window.innerHeight - tamanhoBolinha, targetY));
+        let targetY =
+            playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+
+        targetX = Math.max(
+            0,
+            Math.min(window.innerWidth - tamanhoBolinha, targetX)
+        );
+
+        targetY = Math.max(
+            0,
+            Math.min(window.innerHeight - tamanhoBolinha, targetY)
+        );
 
         bola.style.left = `${targetX}px`;
         bola.style.top = `${targetY}px`;
@@ -565,15 +639,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let pMargemW = 7;
         let pMargemH = 7;
+
         let pX = p.x + pMargemW;
         let pY = p.y + pMargemH;
         let pW = p.w - (pMargemW * 2);
         let pH = p.h - (pMargemH * 2);
 
-        // hitbox da foca: encolhe (centralizada) durante o evento da bolinha verde
         let escala = encolhendo ? ESCALA_ENCOLHIDA : 1;
+
         let bW = (obj.w - 90) * escala;
         let bH = (obj.h - 70) * escala;
+
         let bX = boxX + obj.w / 2 - bW / 2;
         let bY = boxY + obj.h / 2 - bH / 2;
 
@@ -598,9 +674,10 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // devolve o jogador (vivo) que encostou na bolinha, ou undefined
     function quemPegou(bola) {
-        return jogadores.find(p => !p.morto && verificarColisaoEscudo(bola, p));
+        return jogadores.find(
+            p => !p.morto && verificarColisaoEscudo(bola, p)
+        );
     }
 
     function ativarEscudo(p = playerObj) {
@@ -620,11 +697,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ---------- morte e volta (multiplayer) ----------
     function matar(p) {
         if (!juegoAtivo || p.morto) return;
 
-        // single player: morreu, acabou
         if (!multiplayer) {
             gameOver();
             return;
@@ -632,27 +707,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         p.morto = true;
         p.tempoVolta = Date.now() + TEMPO_REVIVER;
-        p.element.style.filter = "brightness(0.25)"; // escuro = morto
+        p.element.style.filter = "brightness(0.25)";
 
-        // se os dois estiverem mortos ao mesmo tempo, fim de jogo
         if (jogadores.every(j => j.morto)) gameOver();
     }
 
     function reviver(p) {
         p.morto = false;
         p.element.style.filter = "none";
-        ativarEscudo(p); // volta com o escudo padrão (5 segundos)
+        ativarEscudo(p);
     }
 
     function gerenciarRevive() {
         jogadores.forEach(p => {
-            if (p.morto && Date.now() > p.tempoVolta) reviver(p);
+            if (p.morto && Date.now() > p.tempoVolta) {
+                reviver(p);
+            }
         });
     }
-    // -------------------------------------------------
 
     function gameOver() {
-        if (!juegoAtivo) return; // evita criar várias telas de game over
+        if (!juegoAtivo) return;
+
         juegoAtivo = false;
 
         let tona = document.createElement('div');
@@ -670,7 +746,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tona.style.fontFamily = "sans-serif";
 
         let texto = document.createElement('h1');
-        texto.innerText = "Você foi devorado ✌️😔, aperte 'espaço' para atacar";
+        texto.innerText =
+            "Você foi devorado ✌️😔, aperte 'espaço' para atacar";
         texto.style.color = "red";
         texto.style.fontSize = "48px";
         texto.style.margin = "0 0 10px 0";
@@ -690,72 +767,102 @@ document.addEventListener('DOMContentLoaded', () => {
         botao.style.backgroundColor = "white";
         botao.style.fontWeight = "bold";
         botao.style.borderRadius = "5px";
+
         const reiniciarJogo = () => location.reload();
         botao.onclick = reiniciarJogo;
+
         tona.appendChild(texto);
         tona.appendChild(pontuacaoFinal);
         tona.appendChild(botao);
+
         document.body.appendChild(tona);
     }
 
     function anima() {
         if (!juegoAtivo || jogoPausado) return;
-        let tempoDecorridoEfetivo = Date.now() - tempoInicial - tempoPausadoTotal;
+
+        let tempoDecorridoEfetivo =
+            Date.now() - tempoInicial - tempoPausadoTotal;
+
         let segundos = Math.floor(tempoDecorridoEfetivo / 1000);
+
         placar.innerText = `Tempo: ${segundos}s`;
+
         moverPlayer();
         gerenciarTempoEscudo();
         gerenciarRevive();
         gerenciarEncolher();
-        atualizarAnzol();
+
+        // Atualiza o arpão de cada jogador separadamente
+        jogadores.forEach(p => atualizarAnzol(p));
+
         atualizarPlacarVara();
+
         escudosNaTela = escudosNaTela.filter(bola => {
             let p = quemPegou(bola);
+
             if (p) {
                 bola.remove();
                 ativarEscudo(p);
                 return false;
             }
+
             return true;
         });
+
         lentidoesNaTela = lentidoesNaTela.filter(bola => {
             if (quemPegou(bola)) {
                 bola.remove();
                 ativarLentidao();
                 return false;
             }
+
             return true;
         });
+
         verdesNaTela = verdesNaTela.filter(bola => {
             if (quemPegou(bola)) {
                 bola.remove();
                 ativarEncolher();
                 return false;
             }
+
             return true;
         });
+
         caixas.forEach(box => {
             move(box);
+
             jogadores.forEach(p => {
-                if (!p.morto && !p.comEscudo && verificarColisao(box, p)) {
+                if (
+                    !p.morto &&
+                    !p.comEscudo &&
+                    verificarColisao(box, p)
+                ) {
                     matar(p);
                 }
             });
         });
+
         aplicarEfeitoFocas();
-        caixas = caixas.filter(box => document.body.contains(box));
+
+        caixas = caixas.filter(
+            box => document.body.contains(box)
+        );
+
         requestAnimationFrame(anima);
     }
 
-    // ---------- menu inicial ----------
     function iniciarJogo(modoMultiplayer) {
         multiplayer = modoMultiplayer;
         emMenu = false;
         juegoAtivo = true;
         tempoInicial = Date.now();
+
         menu.remove();
 
         criarPlayer(playerObj);
+
         if (multiplayer) {
             jogadores.push(player2);
             criarPlayer(player2);
@@ -780,6 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
         botao.style.borderRadius = "5px";
         botao.style.margin = "10px";
         botao.onclick = aoClicar;
+
         return botao;
     }
 
@@ -797,7 +905,13 @@ document.addEventListener('DOMContentLoaded', () => {
     menu.style.zIndex = "200";
     menu.style.fontFamily = "sans-serif";
 
-    menu.appendChild(criarBotaoMenu("Single Player", () => iniciarJogo(false)));
-    menu.appendChild(criarBotaoMenu("Multiplayer", () => iniciarJogo(true)));
+    menu.appendChild(
+        criarBotaoMenu("Single Player", () => iniciarJogo(false))
+    );
+
+    menu.appendChild(
+        criarBotaoMenu("Multiplayer", () => iniciarJogo(true))
+    );
+
     document.body.appendChild(menu);
 });
