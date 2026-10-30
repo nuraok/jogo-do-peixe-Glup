@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bola.style.boxShadow = "0 0 10px lime";
 
         let angulo = Math.random() * Math.PI * 2;
-        let raio = Math.random() * 150 + 100;
+        let raio = Math.random() * 700 + 300;
 
         let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
         let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bola.style.boxShadow = "0 0 10px orange";
 
         let angulo = Math.random() * Math.PI * 2;
-        let raio = Math.random() * 150 + 100;
+        let raio = Math.random() * 550 + 300;
 
         let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
         let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bola.style.boxShadow = "0 0 10px cyan";
 
         let angulo = Math.random() * Math.PI * 2;
-        let raio = Math.random() * 150 + 100;
+        let raio = Math.random() * 500 + 50;
 
         let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
         let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
