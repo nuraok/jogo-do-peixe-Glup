@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let verdesNaTela = [];
 
     // quanto cada bolinha de lentidão reduz do bônus de velocidade
-    const REDUCAO_POR_BOLINHA = 4;
+    const REDUCAO_POR_BOLINHA =6;
     // quanto de bônus já foi "descontado" pelas bolinhas
     let reducaoBonus = 0;
 
     // bolinha verde: encolhe, gira e pisca as focas
-    const REDUCAO_POR_VERDE = 0.5;      // menor que a laranja (1.5)
+    const REDUCAO_POR_VERDE = 10;      // menor que a laranja (1.5)
     const DURACAO_ENCOLHER = 10000;     // 10 segundos
     const ESCALA_ENCOLHIDA = 0.5;       // metade do tamanho
     let encolhendo = false;
@@ -119,8 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
         if (key in teclas) teclas[key] = true;
-        if (key === "a") direcaoVara = 1;
-        if (key === "d") direcaoVara = 1;
+        if (key === "a") direcaoVara = -1;
+        if (key === "d") direcaoVara = -1;
 
         if (e.key === " ") {
             e.preventDefault();
