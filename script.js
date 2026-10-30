@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let verdesNaTela = [];
 
     // quanto cada bolinha de lentidão reduz do bônus de velocidade
-    const REDUCAO_POR_BOLINHA = 1.5;
+    const REDUCAO_POR_BOLINHA = 4;
     // quanto de bônus já foi "descontado" pelas bolinhas
     let reducaoBonus = 0;
 
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const VELOCIDADE_ANZOL = 20;    // pixels por frame
     let proximoTiro = 0;
     let anzol = null;
-    const ALCANCE_VARA = 200;       // distância máxima do ataque (px)
+    const ALCANCE_VARA = 500;       // distância máxima do ataque (px)
     const HITBOX_W = 100;           // largura da área de acerto
     const HITBOX_H = 140;           // altura da área de acerto
     let direcaoVara = -1;           // -1 = esquerda (de onde vêm as caixas), 1 = direita
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
         if (key in teclas) teclas[key] = true;
-        if (key === "a") direcaoVara = -1;
+        if (key === "a") direcaoVara = 1;
         if (key === "d") direcaoVara = 1;
 
         if (e.key === " ") {
