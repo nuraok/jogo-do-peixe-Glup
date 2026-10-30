@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         arrowleft: false, arrowright: false
     };
 
+    // REGISTRO DAS TECLAS
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
 
@@ -183,6 +184,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let key = e.key.toLowerCase();
 
         if (key in teclas) teclas[key] = false;
+    });
+
+    // CORREÇÃO: LIMPA TODAS AS TECLAS PRESAS
+    function limparTeclas() {
+        Object.keys(teclas).forEach(tecla => {
+            teclas[tecla] = false;
+        });
+    }
+
+    // Se a janela perder o foco, solta todas as teclas
+    window.addEventListener('blur', limparTeclas);
+
+    // Se a página ficar em segundo plano, solta todas as teclas
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            limparTeclas();
+        }
     });
 
     // Cada jogador possui seu próprio arpão e recarga
@@ -319,6 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
             jogoPausado = true;
             inicioPausa = Date.now();
             telaPausa.style.display = "flex";
+
+            limparTeclas();
         } else {
             let duracaoPausa = Date.now() - inicioPausa;
 
