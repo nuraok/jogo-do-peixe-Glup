@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let y = Math.random() * (window.innerHeight - obj.h);
+        let y = Math.random() * (window.innerHeight);
 
         let box = document.createElement('img');
         box.src = "sea.png";
