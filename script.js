@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     let i = 1;
-    let juegoAtivo = true;
+    let juegoAtivo = false;          // só vira true depois de escolher o modo no menu
+    let emMenu = true;
+    let multiplayer = false;
     let jogoPausado = false;
     let tempoInicial = Date.now();
     let tempoPausadoTotal = 0;
@@ -23,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let tempoEncolher = 0;
     let anguloFoca = 0;
 
+    // multiplayer: tempo que o jogador morto espera para voltar
+    const TEMPO_REVIVER = 10000;        // 10 segundos
+
     // vara de pesca
     const RECARGA_VARA = 3000;      // ms entre um tiro e outro
     const VELOCIDADE_ANZOL = 20;    // pixels por frame
@@ -42,9 +47,29 @@ document.addEventListener('DOMContentLoaded', () => {
         w: 30,
         h: 30,
         speed: 5,
+        cor: "red",
         comEscudo: false,
-        tempoEscudo: 0
+        tempoEscudo: 0,
+        morto: false,
+        tempoVolta: 0
     };
+
+    // jogador 2 (só existe no multiplayer): quadrado azul, move com as setinhas
+    let player2 = {
+        element: document.createElement('div'),
+        x: window.innerWidth / 2 + 60,
+        y: window.innerHeight / 2,
+        w: 30,
+        h: 30,
+        speed: 5,
+        cor: "blue",
+        comEscudo: false,
+        tempoEscudo: 0,
+        morto: false,
+        tempoVolta: 0
+    };
+
+    let jogadores = [playerObj];
 
     let placar = document.createElement('div');
     placar.style.position = "absolute";
@@ -99,25 +124,29 @@ document.addEventListener('DOMContentLoaded', () => {
     telaPausa.appendChild(textoPausa);
     document.body.appendChild(telaPausa);
 
-    function criarPlayer() {
-        playerObj.element.style.position = "absolute";
-        playerObj.element.style.width = `${playerObj.w}px`;
-        playerObj.element.style.height = `${playerObj.h}px`;
-        playerObj.element.style.backgroundColor = "red";
-        playerObj.element.style.borderRadius = "4px";
-        playerObj.element.style.boxSizing = "border-box";
-        document.body.appendChild(playerObj.element);
-        atualizarPosicaoPlayer();
+    function criarPlayer(p = playerObj) {
+        p.element.style.position = "absolute";
+        p.element.style.width = `${p.w}px`;
+        p.element.style.height = `${p.h}px`;
+        p.element.style.backgroundColor = p.cor;
+        p.element.style.borderRadius = "4px";
+        p.element.style.boxSizing = "border-box";
+        document.body.appendChild(p.element);
+        atualizarPosicaoPlayer(p);
     }
 
-    function atualizarPosicaoPlayer() {
-        playerObj.element.style.left = `${playerObj.x}px`;
-        playerObj.element.style.top = `${playerObj.y}px`;
+    function atualizarPosicaoPlayer(p = playerObj) {
+        p.element.style.left = `${p.x}px`;
+        p.element.style.top = `${p.y}px`;
     }
 
-    let teclas = { w: false, a: false, s: false, d: false };
+    let teclas = {
+        w: false, a: false, s: false, d: false,
+        arrowup: false, arrowdown: false, arrowleft: false, arrowright: false
+    };
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
+        if (key.startsWith("arrow")) e.preventDefault(); // setinhas não rolam a página
         if (key in teclas) teclas[key] = true;
         if (key === "a") direcaoVara = -1;
         if (key === "d") direcaoVara = -1;
@@ -134,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (e.key === "Enter") {
-            if (!juegoAtivo) {
+            if (!juegoAtivo && !emMenu) {
                 location.reload();
             }
         }
@@ -146,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function atirar() {
         if (!juegoAtivo || jogoPausado || anzol) return;
+        if (playerObj.morto) return;
         if (Date.now() < proximoTiro) return;
 
         proximoTiro = Date.now() + RECARGA_VARA;
@@ -272,8 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let duracaoPausa = Date.now() - inicioPausa;
             jogoPausado = false;
             tempoPausadoTotal += duracaoPausa;
-            // o escudo não deve gastar tempo enquanto o jogo está pausado
-            if (playerObj.comEscudo) playerObj.tempoEscudo += duracaoPausa;
+            jogadores.forEach(p => {
+                // o escudo não deve gastar tempo enquanto o jogo está pausado
+                if (p.comEscudo) p.tempoEscudo += duracaoPausa;
+                // a espera para voltar também não conta durante a pausa
+                if (p.morto) p.tempoVolta += duracaoPausa;
+            });
             // o evento da bolinha verde também não gasta tempo durante a pausa
             if (encolhendo) tempoEncolher += duracaoPausa;
             // a recarga da vara também não conta durante a pausa
@@ -283,15 +317,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function moverUm(p, cima, baixo, esquerda, direita) {
+        if (p.morto) return;
+
+        if (cima && p.y > 0) p.y -= p.speed;
+        if (baixo && p.y < window.innerHeight - p.h) p.y += p.speed;
+        if (esquerda && p.x > 0) p.x -= p.speed;
+        if (direita && p.x < window.innerWidth - p.w) p.x += p.speed;
+
+        atualizarPosicaoPlayer(p);
+    }
+
     function moverPlayer() {
         if (!juegoAtivo || jogoPausado) return;
 
-        if (teclas.w && playerObj.y > 0) playerObj.y -= playerObj.speed;
-        if (teclas.s && playerObj.y < window.innerHeight - playerObj.h) playerObj.y += playerObj.speed;
-        if (teclas.a && playerObj.x > 0) playerObj.x -= playerObj.speed;
-        if (teclas.d && playerObj.x < window.innerWidth - playerObj.w) playerObj.x += playerObj.speed;
-
-        atualizarPosicaoPlayer();
+        moverUm(playerObj, teclas.w, teclas.s, teclas.a, teclas.d);
+        if (multiplayer) {
+            moverUm(player2, teclas.arrowup, teclas.arrowdown, teclas.arrowleft, teclas.arrowright);
+        }
     }
 
     function delay(ms) {
@@ -516,16 +559,16 @@ document.addEventListener('DOMContentLoaded', () => {
         spawnEscudo();
     }
 
-    function verificarColisao(box) {
+    function verificarColisao(box, p = playerObj) {
         let boxX = parseFloat(box.style.left) || 0;
         let boxY = parseFloat(box.style.top) || 0;
 
         let pMargemW = 7;
         let pMargemH = 7;
-        let pX = playerObj.x + pMargemW;
-        let pY = playerObj.y + pMargemH;
-        let pW = playerObj.w - (pMargemW * 2);
-        let pH = playerObj.h - (pMargemH * 2);
+        let pX = p.x + pMargemW;
+        let pY = p.y + pMargemH;
+        let pW = p.w - (pMargemW * 2);
+        let pH = p.h - (pMargemH * 2);
 
         // hitbox da foca: encolhe (centralizada) durante o evento da bolinha verde
         let escala = encolhendo ? ESCALA_ENCOLHIDA : 1;
@@ -542,33 +585,71 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    function verificarColisaoEscudo(bola) {
+    function verificarColisaoEscudo(bola, p = playerObj) {
         let bolaX = parseFloat(bola.style.left) || 0;
         let bolaY = parseFloat(bola.style.top) || 0;
         let bolaTamanho = 20;
 
         return (
-            playerObj.x < bolaX + bolaTamanho &&
-            playerObj.x + playerObj.w > bolaX &&
-            playerObj.y < bolaY + bolaTamanho &&
-            playerObj.y + playerObj.h > bolaY
+            p.x < bolaX + bolaTamanho &&
+            p.x + p.w > bolaX &&
+            p.y < bolaY + bolaTamanho &&
+            p.y + p.h > bolaY
         );
     }
 
-    function ativarEscudo() {
-        playerObj.comEscudo = true;
-        playerObj.tempoEscudo = Date.now() + 5000;
-        playerObj.element.style.border = "3px solid cyan";
-        playerObj.element.style.boxShadow = "0 0 15px cyan";
+    // devolve o jogador (vivo) que encostou na bolinha, ou undefined
+    function quemPegou(bola) {
+        return jogadores.find(p => !p.morto && verificarColisaoEscudo(bola, p));
+    }
+
+    function ativarEscudo(p = playerObj) {
+        p.comEscudo = true;
+        p.tempoEscudo = Date.now() + 5000;
+        p.element.style.border = "3px solid cyan";
+        p.element.style.boxShadow = "0 0 15px cyan";
     }
 
     function gerenciarTempoEscudo() {
-        if (playerObj.comEscudo && Date.now() > playerObj.tempoEscudo) {
-            playerObj.comEscudo = false;
-            playerObj.element.style.border = "none";
-            playerObj.element.style.boxShadow = "none";
-        }
+        jogadores.forEach(p => {
+            if (p.comEscudo && Date.now() > p.tempoEscudo) {
+                p.comEscudo = false;
+                p.element.style.border = "none";
+                p.element.style.boxShadow = "none";
+            }
+        });
     }
+
+    // ---------- morte e volta (multiplayer) ----------
+    function matar(p) {
+        if (!juegoAtivo || p.morto) return;
+
+        // single player: morreu, acabou
+        if (!multiplayer) {
+            gameOver();
+            return;
+        }
+
+        p.morto = true;
+        p.tempoVolta = Date.now() + TEMPO_REVIVER;
+        p.element.style.filter = "brightness(0.25)"; // escuro = morto
+
+        // se os dois estiverem mortos ao mesmo tempo, fim de jogo
+        if (jogadores.every(j => j.morto)) gameOver();
+    }
+
+    function reviver(p) {
+        p.morto = false;
+        p.element.style.filter = "none";
+        ativarEscudo(p); // volta com o escudo padrão (5 segundos)
+    }
+
+    function gerenciarRevive() {
+        jogadores.forEach(p => {
+            if (p.morto && Date.now() > p.tempoVolta) reviver(p);
+        });
+    }
+    // -------------------------------------------------
 
     function gameOver() {
         if (!juegoAtivo) return; // evita criar várias telas de game over
@@ -624,19 +705,21 @@ document.addEventListener('DOMContentLoaded', () => {
         placar.innerText = `Tempo: ${segundos}s`;
         moverPlayer();
         gerenciarTempoEscudo();
+        gerenciarRevive();
         gerenciarEncolher();
         atualizarAnzol();
         atualizarPlacarVara();
         escudosNaTela = escudosNaTela.filter(bola => {
-            if (verificarColisaoEscudo(bola)) {
+            let p = quemPegou(bola);
+            if (p) {
                 bola.remove();
-                ativarEscudo();
+                ativarEscudo(p);
                 return false;
             }
             return true;
         });
         lentidoesNaTela = lentidoesNaTela.filter(bola => {
-            if (verificarColisaoEscudo(bola)) {
+            if (quemPegou(bola)) {
                 bola.remove();
                 ativarLentidao();
                 return false;
@@ -644,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         });
         verdesNaTela = verdesNaTela.filter(bola => {
-            if (verificarColisaoEscudo(bola)) {
+            if (quemPegou(bola)) {
                 bola.remove();
                 ativarEncolher();
                 return false;
@@ -653,19 +736,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         caixas.forEach(box => {
             move(box);
-            if (verificarColisao(box) && !playerObj.comEscudo) {
-                gameOver();
-            }
+            jogadores.forEach(p => {
+                if (!p.morto && !p.comEscudo && verificarColisao(box, p)) {
+                    matar(p);
+                }
+            });
         });
         aplicarEfeitoFocas();
         caixas = caixas.filter(box => document.body.contains(box));
         requestAnimationFrame(anima);
     }
 
-    criarPlayer();
-    spawn();
-    spawnEscudo();
-    spawnLentidao();
-    spawnVerde();
-    anima();
+    // ---------- menu inicial ----------
+    function iniciarJogo(modoMultiplayer) {
+        multiplayer = modoMultiplayer;
+        emMenu = false;
+        juegoAtivo = true;
+        tempoInicial = Date.now();
+        menu.remove();
+
+        criarPlayer(playerObj);
+        if (multiplayer) {
+            jogadores.push(player2);
+            criarPlayer(player2);
+        }
+
+        spawn();
+        spawnEscudo();
+        spawnLentidao();
+        spawnVerde();
+        anima();
+    }
+
+    function criarBotaoMenu(texto, aoClicar) {
+        let botao = document.createElement('button');
+        botao.innerText = texto;
+        botao.style.padding = "16px 40px";
+        botao.style.fontSize = "22px";
+        botao.style.fontWeight = "bold";
+        botao.style.cursor = "pointer";
+        botao.style.border = "none";
+        botao.style.backgroundColor = "white";
+        botao.style.borderRadius = "5px";
+        botao.style.margin = "10px";
+        botao.onclick = aoClicar;
+        return botao;
+    }
+
+    let menu = document.createElement('div');
+    menu.style.position = "absolute";
+    menu.style.top = "0";
+    menu.style.left = "0";
+    menu.style.width = "100vw";
+    menu.style.height = "100vh";
+    menu.style.backgroundColor = "rgba(0, 0, 0, 0.85)";
+    menu.style.display = "flex";
+    menu.style.flexDirection = "column";
+    menu.style.justifyContent = "center";
+    menu.style.alignItems = "center";
+    menu.style.zIndex = "200";
+    menu.style.fontFamily = "sans-serif";
+
+    menu.appendChild(criarBotaoMenu("Single Player", () => iniciarJogo(false)));
+    menu.appendChild(criarBotaoMenu("Multiplayer", () => iniciarJogo(true)));
+    document.body.appendChild(menu);
 });
