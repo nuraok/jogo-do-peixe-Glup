@@ -8,11 +8,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let caixas = [];
     let escudosNaTela = [];
     let lentidoesNaTela = [];
+    let verdesNaTela = [];
 
     // quanto cada bolinha de lentidão reduz do bônus de velocidade
     const REDUCAO_POR_BOLINHA = 1.5;
     // quanto de bônus já foi "descontado" pelas bolinhas
     let reducaoBonus = 0;
+
+    // bolinha verde: encolhe, gira e pisca as focas
+    const REDUCAO_POR_VERDE = 0.5;      // menor que a laranja (1.5)
+    const DURACAO_ENCOLHER = 10000;     // 10 segundos
+    const ESCALA_ENCOLHIDA = 0.5;       // metade do tamanho
+    let encolhendo = false;
+    let tempoEncolher = 0;
+    let anguloFoca = 0;
 
     // vara de pesca
     const RECARGA_VARA = 3000;      // ms entre um tiro e outro
@@ -265,6 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tempoPausadoTotal += duracaoPausa;
             // o escudo não deve gastar tempo enquanto o jogo está pausado
             if (playerObj.comEscudo) playerObj.tempoEscudo += duracaoPausa;
+            // o evento da bolinha verde também não gasta tempo durante a pausa
+            if (encolhendo) tempoEncolher += duracaoPausa;
             // a recarga da vara também não conta durante a pausa
             proximoTiro += duracaoPausa;
             telaPausa.style.display = "none";
@@ -308,6 +319,81 @@ document.addEventListener('DOMContentLoaded', () => {
         // nunca reduz além do bônus atual, para a bolinha não ser desperdiçada
         reducaoBonus = Math.min(reducaoBonus + REDUCAO_POR_BOLINHA, calcularBonusBruto());
     }
+
+    // ---------- bolinha verde ----------
+    function ativarEncolher() {
+        encolhendo = true;
+        tempoEncolher = Date.now() + DURACAO_ENCOLHER;
+        // mesma lógica da laranja, mas reduz menos (não mexe no placar de tempo)
+        reducaoBonus = Math.min(reducaoBonus + REDUCAO_POR_VERDE, calcularBonusBruto());
+    }
+
+    function resetarEstiloFoca(box) {
+        box.style.scale = "1";
+        box.style.rotate = "0deg";
+        box.style.filter = "none";
+    }
+
+    function gerenciarEncolher() {
+        if (encolhendo && Date.now() > tempoEncolher) {
+            encolhendo = false;
+            caixas.forEach(resetarEstiloFoca);
+        }
+    }
+
+    function aplicarEfeitoFocas() {
+        if (!encolhendo) return;
+        anguloFoca = (anguloFoca + 10) % 360;
+        caixas.forEach(box => {
+            box.style.scale = `${ESCALA_ENCOLHIDA}`;
+            box.style.rotate = `${anguloFoca}deg`;
+            // sepia + hue-rotate faz até imagens cinza virarem arco-íris
+            box.style.filter =
+                `sepia(1) saturate(6) hue-rotate(${anguloFoca * 3}deg) ` +
+                `drop-shadow(0 0 6px hsl(${anguloFoca * 3}, 100%, 50%))`;
+        });
+    }
+
+    async function spawnVerde() {
+        if (!juegoAtivo) return;
+
+        let tempoEspera = Math.floor(Math.random() * 6000) + 8000; // 8 a 14s
+        await delay(tempoEspera);
+
+        if (!juegoAtivo) return;
+
+        while (jogoPausado) {
+            await delay(500);
+            if (!juegoAtivo) return;
+        }
+
+        let tamanhoBolinha = 20;
+        let bola = document.createElement('div');
+        bola.style.position = "absolute";
+        bola.style.width = `${tamanhoBolinha}px`;
+        bola.style.height = `${tamanhoBolinha}px`;
+        bola.style.backgroundColor = "lime";
+        bola.style.borderRadius = "50%";
+        bola.style.boxShadow = "0 0 10px lime";
+
+        let angulo = Math.random() * Math.PI * 2;
+        let raio = Math.random() * 150 + 100;
+
+        let targetX = playerObj.x + (playerObj.w / 2) + Math.cos(angulo) * raio;
+        let targetY = playerObj.y + (playerObj.h / 2) + Math.sin(angulo) * raio;
+
+        targetX = Math.max(0, Math.min(window.innerWidth - tamanhoBolinha, targetX));
+        targetY = Math.max(0, Math.min(window.innerHeight - tamanhoBolinha, targetY));
+
+        bola.style.left = `${targetX}px`;
+        bola.style.top = `${targetY}px`;
+
+        document.body.appendChild(bola);
+        verdesNaTela.push(bola);
+
+        spawnVerde();
+    }
+    // -----------------------------------
 
     async function spawnLentidao() {
         if (!juegoAtivo) return;
@@ -441,12 +527,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let pW = playerObj.w - (pMargemW * 2);
         let pH = playerObj.h - (pMargemH * 2);
 
-        let bMargemW = 45;
-        let bMargemH = 35;
-        let bX = boxX + bMargemW;
-        let bY = boxY + bMargemH;
-        let bW = obj.w - (bMargemW * 2);
-        let bH = obj.h - (bMargemH * 2);
+        // hitbox da foca: encolhe (centralizada) durante o evento da bolinha verde
+        let escala = encolhendo ? ESCALA_ENCOLHIDA : 1;
+        let bW = (obj.w - 90) * escala;
+        let bH = (obj.h - 70) * escala;
+        let bX = boxX + obj.w / 2 - bW / 2;
+        let bY = boxY + obj.h / 2 - bH / 2;
 
         return (
             pX < bX + bW &&
@@ -538,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
         placar.innerText = `Tempo: ${segundos}s`;
         moverPlayer();
         gerenciarTempoEscudo();
+        gerenciarEncolher();
         atualizarAnzol();
         atualizarPlacarVara();
         escudosNaTela = escudosNaTela.filter(bola => {
@@ -556,12 +643,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return true;
         });
+        verdesNaTela = verdesNaTela.filter(bola => {
+            if (verificarColisaoEscudo(bola)) {
+                bola.remove();
+                ativarEncolher();
+                return false;
+            }
+            return true;
+        });
         caixas.forEach(box => {
             move(box);
             if (verificarColisao(box) && !playerObj.comEscudo) {
                 gameOver();
             }
         });
+        aplicarEfeitoFocas();
         caixas = caixas.filter(box => document.body.contains(box));
         requestAnimationFrame(anima);
     }
@@ -570,5 +666,6 @@ document.addEventListener('DOMContentLoaded', () => {
     spawn();
     spawnEscudo();
     spawnLentidao();
+    spawnVerde();
     anima();
 });
